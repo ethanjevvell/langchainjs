@@ -150,6 +150,8 @@ export interface WebBrowserArgs extends ToolParams {
 
   axiosConfig?: Omit<AxiosRequestConfig, "url">;
 
+  customPrompt?: string;
+
   /** @deprecated */
   callbackManager?: CallbackManager;
 }
@@ -167,7 +169,15 @@ export class WebBrowser extends Tool {
 
   private axiosConfig: Omit<AxiosRequestConfig, "url">;
 
-  constructor({ model, headers, embeddings, axiosConfig }: WebBrowserArgs) {
+  private customPrompt: string;
+
+  constructor({
+    model,
+    headers,
+    embeddings,
+    axiosConfig,
+    customPrompt,
+  }: WebBrowserArgs) {
     super(...arguments);
 
     this.model = model;
@@ -178,6 +188,7 @@ export class WebBrowser extends Tool {
       adapter: isNode() ? undefined : fetchAdapter,
       ...axiosConfig,
     };
+    this.customPrompt = customPrompt || "";
   }
 
   /** @ignore */
@@ -225,9 +236,15 @@ export class WebBrowser extends Tool {
       context = results.map((res) => res.pageContent).join("\n");
     }
 
-    const input = `Text:${context}\n\nI need ${
-      doSummary ? "a summary" : task
-    } from the above text, also provide up to 5 markdown links from within that would be of interest (always including URL and text). Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`;
+    let input;
+
+    if (this.customPrompt) {
+      input = this.customPrompt;
+    } else {
+      input = `Text:${context}\n\nI need ${
+        doSummary ? "a summary" : task
+      } from the above text, also provide up to 5 markdown links from within that would be of interest (always including URL and text). Links should be provided, if present, in markdown syntax as a list under the heading "Relevant Links:".`;
+    }
 
     return this.model.predict(input, undefined, runManager?.getChild());
   }
